@@ -61,18 +61,25 @@ def fetchAndFillMySQLData():
                 tiden = tiden + " " + timestamp +":00"
                 print tiden
                 # Create a new record
-                sql = "INSERT INTO %s (`timestamp`) VALUES ('%s')" %(stationInfo[x].tblName, tiden)
-                print sql
-                cursor.execute(sql)
+                sql1    ="INSERT INTO %s (`timestamp`" %stationInfo[x].tblName
+                sql2    ="VALUES ('%s'" %tiden
+                
+                #sql = "INSERT INTO %s (`timestamp`) VALUES ('%s')" %(stationInfo[x].tblName, tiden)
+                #print sql
+                #cursor.execute(sql)
                 for i in range(0, stationInfo[x].nmrOfMeasurements,1):
                     #sql = "INSERT INTO %s (`timestamp`, `NO2`) VALUES ('1000-00-00 10:00:00', 20)" %(stationInfo[x].tblName)
                     column = komponent[i]
                     if column == "PM2.5":
                         column = "PM2"
-                    
-                    sql = "UPDATE %s SET %s = %s WHERE (`timestamp`) = ('%s')" %(stationInfo[x].tblName, column, verdi[i], tiden)
-                    print sql
-                    cursor.execute(sql)
+                
+                    sql1    += ",`" + column + "`"
+                    sql2    += ",'" + verdi[i] + "'"
+                sql1 +=") "
+                sql2 += ")"
+                sql = sql1 + sql2
+                print sql
+                cursor.execute(sql)
         except:
             print "MySQL Error"
 
