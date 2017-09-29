@@ -10,6 +10,27 @@ import schedule
 import time
 import datetime
 
+def correctTimestamp(timestamp):
+    hour = timestamp[0] + timestamp[1]
+    if hour == "23":
+        hour = 0
+    else:
+        hour = int(hour) + 1
+
+    hour = str(hour)
+    newtimestamp = ""
+    if len(hour) == 1:
+        newtimestamp += "0"
+        newtimestamp += hour
+    else:
+        newtimestamp += hour[0]
+        newtimestamp += hour[1]
+
+    for i in range(2, len(timestamp),1):
+        newtimestamp += timestamp[i]
+        print newtimestamp
+    return  newtimestamp
+
 def fetchAndFillMySQLData():
     print "From FetchAndFillMySQLData" #+ datetime.datetime.now()
     # Fyller inn URL, antall målinger og tabellnavn per stasjon
@@ -45,7 +66,7 @@ def fetchAndFillMySQLData():
             komponent[i]       = tree.xpath(komponentXpath)[0]
             
             verdierXpath    ='//span[@id="ctl00_cph_Map_ctl00_gwStation_ctl0%d_Label2"]/text()'%(i+2)
-            timestamp       = tree.xpath(verdierXpath)[0]
+            timestamp       = correctTimestamp(tree.xpath(verdierXpath)[0])
             verdi[i]      = tree.xpath(verdierXpath)[1]
             verdi[i]      = verdi[i].replace(",", ".")
             if verdi[i] == "-":
