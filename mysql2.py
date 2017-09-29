@@ -1,15 +1,16 @@
 # -- coding: utf-8 --
-from lxml import html
-import requests
-from setup import setupStations, getConnection
 
-import pymysql.cursors
-
-
-import schedule
+from lxml import html                                           # Brukes for å kunne hente data fra nett
+import requests                                                 # Brukes for å kunne hente data fra nett
+import pymysql.cursors                                          # Brukes for å skrive til MySQL-database
+import schedule                                                 # Brukes for å schedule funksjoner
 import time
 import datetime
+import logging
+from setup import setupStations, getConnection
 
+# Tar inn timestamp på formatet "HH:mm:ss", og legger til en time til timestampen. Dette gjøres fordi luftkvalitet.info alltid viser timestamps i vintertid
+# Det bør fikses slik at det ikke legges til en time dersom det faktisk er vintertid.
 def correctTimestamp(timestamp):
     hour = timestamp[0] + timestamp[1]
     if hour == "23":
@@ -28,18 +29,25 @@ def correctTimestamp(timestamp):
 
     for i in range(2, len(timestamp),1):
         newtimestamp += timestamp[i]
-        print newtimestamp
+
+    logging.debug(newtimestamp)
     return  newtimestamp
 
+
+
+
+
 def fetchAndFillMySQLData():
-    print "From FetchAndFillMySQLData" #+ datetime.datetime.now()
+    print "From FetchAndFillMySQLData" + str(datetime.datetime.now())
     # Fyller inn URL, antall målinger og tabellnavn per stasjon
     stationInfo = setupStations()
 
 
     #Kobler til mysql database
-    connection = getConnection()
-
+    try:
+        connection = getConnection()
+    except:
+        print "Failed to connect to MySQL-server"
 
     #Går igjennom for hver stasjon
     for x in range(0,len(stationInfo),1):
@@ -54,7 +62,7 @@ def fetchAndFillMySQLData():
         #Henter stasjonsnavn, unødvendig? Kun Debug?
         stationNameXpath = '//span[@id="ctl00_cph_Text_ctl00_lTitle"]/text()'
         stationName = tree.xpath(stationNameXpath)[0].encode('iso-8859-1')
-        print stationName
+        logging.debug(stationName)
         
         #Setter opp tabeller for data, gjøres for hver stasjon pga forskjellige målinger
         komponent = [None for _ in range(stationInfo[x].nmrOfMeasurements)]
@@ -99,9 +107,10 @@ def fetchAndFillMySQLData():
                 sql1 +=") "
                 sql2 += ")"
                 sql = sql1 + sql2
-                print sql
+                logging.debug(sql)
                 cursor.execute(sql)
+                logging.debug("Insertion successful")
         except:
-            print "MySQL Error"
+            logging.error("MySQL Error, probably because of already existing timestamp")
 
     connection.close()
