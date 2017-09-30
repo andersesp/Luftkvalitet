@@ -90,8 +90,8 @@ def fetchAndFillMySQLData():
                 tiden = tiden + " " + timestamp +":00"
                 print tiden
                 # Create a new record
-                sql1    ="INSERT INTO %s (`timestamp`" %stationInfo[x].tblName
-                sql2    ="VALUES ('%s'" %tiden
+                #sql1    ="INSERT INTO %s (`timestamp`" %(stationInfo[x].tblName
+                #sql2    ="VALUES ('%s'" %tiden
                 
                 #sql = "INSERT INTO %s (`timestamp`) VALUES ('%s')" %(stationInfo[x].tblName, tiden)
                 #print sql
@@ -101,15 +101,18 @@ def fetchAndFillMySQLData():
                     column = komponent[i]
                     if column == "PM2.5":
                         column = "PM2"
-                
-                    sql1    += ",`" + column + "`"
-                    sql2    += ",'" + verdi[i] + "'"
-                sql1 +=") "
-                sql2 += ")"
-                sql = sql1 + sql2
-                logging.debug(sql)
-                cursor.execute(sql)
-                logging.debug("Insertion successful")
+                    sql = "INSERT INTO %s (`timestamp`, `%s`) VALUES ('%s', %s)" %(stationInfo[x].tblName + column, column, tiden, verdi[i])
+#                    sql1    += ",`" + column + "`"
+#                    sql2    += ",'" + verdi[i] + "'"
+                    logging.debug(sql)
+                    cursor.execute(sql)
+                    logging.debug("Insertion successful")
+#                sql1 +=") "
+#                sql2 += ")"
+#                sql = sql1 + sql2
+#                logging.debug(sql)
+#                cursor.execute(sql)
+#logging.debug("Insertion successful")
         except:
             logging.error("MySQL Error, probably because of already existing timestamp")
 
