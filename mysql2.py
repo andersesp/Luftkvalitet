@@ -30,7 +30,7 @@ def correctTimestamp(timestamp):
     for i in range(2, len(timestamp),1):
         newtimestamp += timestamp[i]
 
-    logging.debug(newtimestamp)
+#logging.debug(newtimestamp)
     return  newtimestamp
 
 
@@ -69,51 +69,37 @@ def fetchAndFillMySQLData():
         verdi = [None for _ in range(stationInfo[x].nmrOfMeasurements)]
         
         # Går igjennom nettsiden og henter ut verdier for hver av komponentene. Antall komponenter bestemmes av integeren i stationInfo[][x]
-        for i in range(0,stationInfo[x].nmrOfMeasurements,1):
-            komponentXpath  = '//span[@id="ctl00_cph_Map_ctl00_gwStation_ctl0%d_Label1"]/text()'%(i+2)
-            komponent[i]       = tree.xpath(komponentXpath)[0]
-            
-            verdierXpath    ='//span[@id="ctl00_cph_Map_ctl00_gwStation_ctl0%d_Label2"]/text()'%(i+2)
-            timestamp       = correctTimestamp(tree.xpath(verdierXpath)[0])
-            verdi[i]      = tree.xpath(verdierXpath)[1]
-            verdi[i]      = verdi[i].replace(",", ".")
-            if verdi[i] == "-":
-                verdi[i] = "-99"
-            datodognmiddel  = tree.xpath(verdierXpath)[2]
-            verdidognmiddel = tree.xpath(verdierXpath)[3]
-            enhet           = tree.xpath(verdierXpath)[4].encode('iso-8859-1')
-            print komponent[i] + " " + timestamp + " " + verdi[i] + " " + datodognmiddel + " " + verdidognmiddel +" " + enhet
-
-
         try:
+            for i in range(0,stationInfo[x].nmrOfMeasurements,1):
+                komponentXpath  = '//span[@id="ctl00_cph_Map_ctl00_gwStation_ctl0%d_Label1"]/text()'%(i+2)
+                komponent[i]       = tree.xpath(komponentXpath)[0]
+                
+                verdierXpath    ='//span[@id="ctl00_cph_Map_ctl00_gwStation_ctl0%d_Label2"]/text()'%(i+2)
+                timestamp       = correctTimestamp(tree.xpath(verdierXpath)[0])
+                verdi[i]      = tree.xpath(verdierXpath)[1]
+                verdi[i]      = verdi[i].replace(",", ".")
+                if verdi[i] == "-":
+                    verdi[i] = "-99"
+                datodognmiddel  = tree.xpath(verdierXpath)[2]
+                verdidognmiddel = tree.xpath(verdierXpath)[3]
+                enhet           = tree.xpath(verdierXpath)[4].encode('iso-8859-1')
+                print komponent[i] + " " + timestamp + " " + verdi[i] + " " + datodognmiddel + " " + verdidognmiddel +" " + enhet
+
+
             with connection.cursor() as cursor:
                 tiden = tiden + " " + timestamp +":00"
                 print tiden
-                # Create a new record
-                #sql1    ="INSERT INTO %s (`timestamp`" %(stationInfo[x].tblName
-                #sql2    ="VALUES ('%s'" %tiden
-                
-                #sql = "INSERT INTO %s (`timestamp`) VALUES ('%s')" %(stationInfo[x].tblName, tiden)
-                #print sql
-                #cursor.execute(sql)
                 for i in range(0, stationInfo[x].nmrOfMeasurements,1):
-                    #sql = "INSERT INTO %s (`timestamp`, `NO2`) VALUES ('1000-00-00 10:00:00', 20)" %(stationInfo[x].tblName)
                     column = komponent[i]
                     if column == "PM2.5":
                         column = "PM2"
                     sql = "INSERT INTO %s (`timestamp`, `%s`) VALUES ('%s', %s)" %(stationInfo[x].tblName + column, column, tiden, verdi[i])
-#                    sql1    += ",`" + column + "`"
-#                    sql2    += ",'" + verdi[i] + "'"
                     logging.debug(sql)
-                    cursor.execute(sql)
-                    logging.debug("Insertion successful")
-#                sql1 +=") "
-#                sql2 += ")"
-#                sql = sql1 + sql2
-#                logging.debug(sql)
-#                cursor.execute(sql)
-#logging.debug("Insertion successful")
+                    try:
+                        cursor.execute(sql)
+                        logging.debug("Insertion successful")
+                    except:
+                        logging.error("MySQL Error, probably because of already existing timestamp")
         except:
-            logging.error("MySQL Error, probably because of already existing timestamp")
-
+            print "Index out of range?"
     connection.close()
