@@ -34,14 +34,16 @@ def correctTimestamp(timestamp):
     return  newtimestamp
 
 
-
+def isItDaylightSaving():
+    return time.localtime().tm_isdst
 
 
 def fetchAndFillMySQLData():
     print "From FetchAndFillMySQLData" + str(datetime.datetime.now())
     # Fyller inn URL, antall målinger og tabellnavn per stasjon
     stationInfo = setupStations()
-
+    
+    dst = isItDaylightSaving()
 
     #Kobler til mysql database
     try:
@@ -65,17 +67,21 @@ def fetchAndFillMySQLData():
         logging.debug(stationName)
         
         #Setter opp tabeller for data, gjøres for hver stasjon pga forskjellige målinger
-        komponent = [None for _ in range(stationInfo[x].nmrOfMeasurements)]
-        verdi = [None for _ in range(stationInfo[x].nmrOfMeasurements)]
+        komponent   = [None for _ in range(stationInfo[x].nmrOfMeasurements)]
+        verdi       = [None for _ in range(stationInfo[x].nmrOfMeasurements)]
+        timestamp   = [None for _ in range(stationInfo[x].nmrOfMeasurements)]
         
         # Går igjennom nettsiden og henter ut verdier for hver av komponentene. Antall komponenter bestemmes av integeren i stationInfo[][x]
         try:
             for i in range(0,stationInfo[x].nmrOfMeasurements,1):
                 komponentXpath  = '//span[@id="ctl00_cph_Map_ctl00_gwStation_ctl0%d_Label1"]/text()'%(i+2)
-                komponent[i]       = tree.xpath(komponentXpath)[0]
+                komponent[i]    = tree.xpath(komponentXpath)[0]
                 
                 verdierXpath    ='//span[@id="ctl00_cph_Map_ctl00_gwStation_ctl0%d_Label2"]/text()'%(i+2)
-                timestamp       = correctTimestamp(tree.xpath(verdierXpath)[0])
+                if dst:
+                    timestamp[i]    = correctTimestamp(tree.xpath(verdierXpath)[0])
+                else:
+                    timestamp[i]    = tree.xpath(verdierXpath)[0]
                 verdi[i]      = tree.xpath(verdierXpath)[1]
                 verdi[i]      = verdi[i].replace(",", ".")
                 if verdi[i] == "-":
@@ -83,16 +89,31 @@ def fetchAndFillMySQLData():
                 datodognmiddel  = tree.xpath(verdierXpath)[2]
                 verdidognmiddel = tree.xpath(verdierXpath)[3]
                 enhet           = tree.xpath(verdierXpath)[4].encode('iso-8859-1')
-                print komponent[i] + " " + timestamp + " " + verdi[i] + " " + datodognmiddel + " " + verdidognmiddel +" " + enhet
+                print komponent[i] + " " + timestamp[i] + " " + verdi[i] + " " + datodognmiddel + " " + verdidognmiddel +" " + enhet
 
 
             with connection.cursor() as cursor:
-                tiden = tiden + " " + timestamp +":00"
-                print tiden
                 for i in range(0, stationInfo[x].nmrOfMeasurements,1):
+                    tiden = tiden + " " + timestamp[i] +":00"
+                    print tiden
+                    
                     column = komponent[i]
                     if column == "PM2.5":
                         column = "PM2"
+
+                    print "test"
+                    if timestamp[i] == '23:00':
+                        sql = "Select * from %s WHERE DATE(timestamp) = '%s'" %(stationInfo[x].tblName + column, time.strftime("%Y-%m-%d"))
+                        print sql
+                        cursor.execute(sql)
+                        result = cursor.fetchall()
+                        print "Antall rader " + str(len(result))
+                        if len(result) == 0:
+                            tiden = datetime.date.yesterday()
+                            tiden = tiden.strftime('%Y-%m-%d')
+                            tiden = tiden + " " + timestamp[i] + ":00"
+                            print "heisan"
+
                     sql = "INSERT INTO %s (`timestamp`, `%s`) VALUES ('%s', %s)" %(stationInfo[x].tblName + column, column, tiden, verdi[i])
                     logging.debug(sql)
                     try:
